@@ -1,7 +1,7 @@
 package releasekey
 
 // The signing side (A1, used by bld): signing the release message and the
-// key file. Ported from File Cellar's internal/releasekey. The verifying side
+// key file. The verifying side
 // — the compiled-in public keys and Verify — is in verify.go.
 //
 // The contract (fixed by the lead): bld release signs each mghagent release

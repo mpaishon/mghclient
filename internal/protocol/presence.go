@@ -4,7 +4,7 @@ package protocol
 // (D26), and install scripts (D27). A file of its own so the round-2 streams
 // merge without touching each other's lines; added 2026-10-29.
 //
-// After File Cellar's internal/protocol/run.go: a client says how it runs at
+// A client says how it runs at
 // check-in, so the console can tell whether it is the background service
 // already and what its "Run as a service" would take — nothing on macOS and
 // Linux, no prompt on Windows when the client runs as an administrator, an

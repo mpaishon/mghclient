@@ -22,7 +22,7 @@ import (
 	"github.com/mpaishon/mghclient/internal/protocol"
 )
 
-// Enrolment, ported from File Cellar's internal/syncclient/enroll.go: a key is
+// Enrolment: a key is
 // made here, only a CSR and the one-time code go to the relay's web listener,
 // and what comes back — the certificate, the CA that is the only trust for
 // every later connection, and where the mutual-TLS listener is — is checked

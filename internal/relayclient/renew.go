@@ -17,7 +17,7 @@ import (
 	"github.com/mpaishon/mghclient/internal/protocol"
 )
 
-// Renewal, ported from File Cellar's internal/syncclient/renew.go. The relay
+// Renewal. The relay
 // renews a client certificate from 30 days before it expires (D11) and says
 // when in /whoami (renew_after); without that word the client falls back to
 // the same rule itself.

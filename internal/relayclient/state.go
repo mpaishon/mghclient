@@ -12,9 +12,7 @@ import (
 	"github.com/mpaishon/mghclient/internal/protocol"
 )
 
-// The files the client keeps in its state folder ([relay] state_dir). Ported
-// from File Cellar's internal/syncclient/state.go, which keeps the same set
-// for its sync client.
+// The files the client keeps in its state folder ([relay] state_dir).
 const (
 	KeyFile    = "client.key"  // the private key, 0600; it never leaves the machine
 	CertFile   = "client.crt"  // the client certificate the relay issued

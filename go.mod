@@ -8,3 +8,5 @@ require (
 )
 
 require github.com/stretchr/testify v1.11.1 // indirect
+
+retract v0.1.0 // published under the MIT licence by mistake; not licensed for use

@@ -1,13 +1,12 @@
 // Package mghclient is the client SDK for an application that updates
-// through an mghRelay. Import it as github.com/mpaishon/mghclient (the
-// public module, README.md and ONBOARDING.md there); it is maintained in
-// MyGHAgent's mghclient/ folder and exported (go run ./bld/sdkexport).
+// through an mghRelay. Import it as github.com/mpaishon/mghclient (see
+// README.md there). It is not licensed for use by anyone but its owner.
 //
 // An instance of an app enrols once — with a one-time code, or by asking
 // and waiting for an administrator's approval — and from then on talks to
 // the relay over mutual TLS with the certificate it was issued:
 //
-//	inst, err := mghclient.Enrol(ctx, cfg, mghclient.EnrolOptions{URL: "https://relay.home.lan:8444"})
+//	inst, err := mghclient.Enrol(ctx, cfg, mghclient.EnrolOptions{URL: "https://relay.example.net:8444"})
 //	...
 //	offer, err := inst.Check(ctx)          // nil: nothing to install
 //	err = inst.DownloadFile(ctx, offer, "/tmp/app.zip", nil)
@@ -16,9 +15,8 @@
 // or hand the loop to Run. Installing, staging and restarting are the
 // application's own business: the SDK finds, fetches and verifies.
 //
-// The SDK is the same code the relay's own client (mghagent) uses — the
-// internal relayclient, protocol and releasekey packages — behind a small
-// surface that keeps its compatibility promises.
+// It wraps the internal relayclient, protocol and releasekey packages
+// behind a small surface that keeps its compatibility promises.
 package mghclient
 
 import (

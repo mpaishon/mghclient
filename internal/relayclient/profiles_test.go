@@ -26,28 +26,28 @@ func profileHosts(list []candidate) string {
 }
 
 var threeProfiles = []protocol.ConnectionProfile{
-	{ID: "lan", Name: "LAN", Kind: protocol.RouteInternal, RelayAddr: "192.168.0.12:9444", Order: 1},
-	{ID: "vpn", Name: "VPN", Kind: protocol.RouteInternal, RelayAddr: "100.101.1.5:9444", Order: 2},
+	{ID: "lan", Name: "LAN", Kind: protocol.RouteInternal, RelayAddr: "192.0.2.12:9444", Order: 1},
+	{ID: "vpn", Name: "VPN", Kind: protocol.RouteInternal, RelayAddr: "198.51.100.5:9444", Order: 2},
 	{ID: "external", Name: "External", Kind: protocol.RouteExternal, RelayAddr: "relay.example.com:443", Order: 3},
 }
 
 // The order a client tries the relay's profiles in.
 func TestProfileCandidates(t *testing.T) {
-	const all = "lan=192.168.0.12:9444,vpn=100.101.1.5:9444,external=relay.example.com:443"
+	const all = "lan=192.0.2.12:9444,vpn=198.51.100.5:9444,external=relay.example.com:443"
 	for _, c := range []struct {
 		name, route, chosen string
 		only                bool
 		relayURL            string
 		want                string
 	}{
-		{"auto, enrolled by name", "", "", false, "https://nas02:9444", all + ",-=nas02:9444"},
-		{"auto, enrolled at a profile's address", "", "", false, "https://192.168.0.12:9444", all},
-		{"route internal", protocol.RouteInternal, "", false, "https://nas02:9444", "lan=192.168.0.12:9444,vpn=100.101.1.5:9444,-=nas02:9444"},
-		{"route external", protocol.RouteExternal, "", false, "https://nas02:9444", "external=relay.example.com:443"},
-		{"chosen", "", "vpn", false, "https://nas02:9444", "vpn=100.101.1.5:9444,lan=192.168.0.12:9444,external=relay.example.com:443,-=nas02:9444"},
-		{"chosen beats the route", protocol.RouteExternal, "lan", false, "https://nas02:9444", "lan=192.168.0.12:9444,vpn=100.101.1.5:9444,external=relay.example.com:443,-=nas02:9444"},
-		{"chosen, only", "", "vpn", true, "https://nas02:9444", "vpn=100.101.1.5:9444"},
-		{"chosen but gone", "", "site-b", false, "https://192.168.0.12:9444", all},
+		{"auto, enrolled by name", "", "", false, "https://relay-lan.example:9444", all + ",-=relay-lan.example:9444"},
+		{"auto, enrolled at a profile's address", "", "", false, "https://192.0.2.12:9444", all},
+		{"route internal", protocol.RouteInternal, "", false, "https://relay-lan.example:9444", "lan=192.0.2.12:9444,vpn=198.51.100.5:9444,-=relay-lan.example:9444"},
+		{"route external", protocol.RouteExternal, "", false, "https://relay-lan.example:9444", "external=relay.example.com:443"},
+		{"chosen", "", "vpn", false, "https://relay-lan.example:9444", "vpn=198.51.100.5:9444,lan=192.0.2.12:9444,external=relay.example.com:443,-=relay-lan.example:9444"},
+		{"chosen beats the route", protocol.RouteExternal, "lan", false, "https://relay-lan.example:9444", "lan=192.0.2.12:9444,vpn=198.51.100.5:9444,external=relay.example.com:443,-=relay-lan.example:9444"},
+		{"chosen, only", "", "vpn", true, "https://relay-lan.example:9444", "vpn=198.51.100.5:9444"},
+		{"chosen but gone", "", "site-b", false, "https://192.0.2.12:9444", all},
 	} {
 		st := &State{RelayURL: c.relayURL, Profiles: threeProfiles, ConnProfile: c.chosen, ConnNoFallback: c.only}
 		if got := profileHosts(candidates(Options{Route: c.route}, st)); got != c.want {
@@ -55,13 +55,13 @@ func TestProfileCandidates(t *testing.T) {
 		}
 	}
 	// client.toml overrides an address: the D28 list, as before.
-	st := &State{RelayURL: "https://nas02:9444", Profiles: threeProfiles, ConnProfile: "vpn"}
-	if got := profileHosts(candidates(Options{URL: "https://10.0.0.5:9444"}, st)); got != "-=10.0.0.5:9444" {
+	st := &State{RelayURL: "https://relay-lan.example:9444", Profiles: threeProfiles, ConnProfile: "vpn"}
+	if got := profileHosts(candidates(Options{URL: "https://203.0.113.5:9444"}, st)); got != "-=203.0.113.5:9444" {
 		t.Errorf("[relay] url: %s", got)
 	}
 	// An older relay advertised none: the D28 list.
-	st = &State{RelayURL: "https://nas02:9444", PublicURL: "https://relay.example.com:443"}
-	if got := profileHosts(candidates(Options{}, st)); got != "-=nas02:9444,-=relay.example.com:443" {
+	st = &State{RelayURL: "https://relay-lan.example:9444", PublicURL: "https://relay.example.com:443"}
+	if got := profileHosts(candidates(Options{}, st)); got != "-=relay-lan.example:9444,-=relay.example.com:443" {
 		t.Errorf("no profiles: %s", got)
 	}
 }

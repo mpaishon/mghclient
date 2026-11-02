@@ -23,17 +23,17 @@ func hosts(list []candidate) string {
 }
 
 func TestRouteURLs(t *testing.T) {
-	in := []string{"https://192.168.0.13:9444", "https://192.168.0.12:9444", "https://192.168.0.13:9444/"}
+	in := []string{"https://192.0.2.13:9444", "https://192.0.2.12:9444", "https://192.0.2.13:9444/"}
 	pub := "https://relay.example.com:9444"
 	for _, c := range []struct {
 		mode, public, want string
 	}{
-		{"", pub, "internal=192.168.0.13:9444,internal=192.168.0.12:9444,external=relay.example.com:9444"},
-		{protocol.RouteAuto, "", "internal=192.168.0.13:9444,internal=192.168.0.12:9444"},
-		{protocol.RouteInternal, pub, "internal=192.168.0.13:9444,internal=192.168.0.12:9444"},
+		{"", pub, "internal=192.0.2.13:9444,internal=192.0.2.12:9444,external=relay.example.com:9444"},
+		{protocol.RouteAuto, "", "internal=192.0.2.13:9444,internal=192.0.2.12:9444"},
+		{protocol.RouteInternal, pub, "internal=192.0.2.13:9444,internal=192.0.2.12:9444"},
 		{protocol.RouteExternal, pub, "external=relay.example.com:9444"},
-		{protocol.RouteExternal, "", "internal=192.168.0.13:9444,internal=192.168.0.12:9444"}, // nothing public known yet
-		{protocol.RouteAuto, "http://plain:80", "internal=192.168.0.13:9444,internal=192.168.0.12:9444"},
+		{protocol.RouteExternal, "", "internal=192.0.2.13:9444,internal=192.0.2.12:9444"}, // nothing public known yet
+		{protocol.RouteAuto, "http://plain:80", "internal=192.0.2.13:9444,internal=192.0.2.12:9444"},
 	} {
 		if got := hosts(RouteURLs(in, c.public, c.mode)); got != c.want {
 			t.Errorf("mode %q public %q: %s, want %s", c.mode, c.public, got, c.want)
@@ -54,7 +54,7 @@ func (f *fakeProbe) probe(_ context.Context, u *url.URL) bool {
 
 func TestRouterAutoFallsBackAndReturns(t *testing.T) {
 	f := &fakeProbe{up: map[string]bool{"relay.example.com:9444": true}}
-	r := &router{mode: protocol.RouteAuto, list: RouteURLs([]string{"https://192.168.0.12:9444"}, "https://relay.example.com:9444", ""), probe: f.probe}
+	r := &router{mode: protocol.RouteAuto, list: RouteURLs([]string{"https://192.0.2.12:9444"}, "https://relay.example.com:9444", ""), probe: f.probe}
 	ctx := context.Background()
 
 	r.ready(ctx)
@@ -63,7 +63,7 @@ func TestRouterAutoFallsBackAndReturns(t *testing.T) {
 	}
 	// Within the minute the preferred address is not probed again.
 	f.calls = nil
-	f.up["192.168.0.12:9444"] = true
+	f.up["192.0.2.12:9444"] = true
 	r.ready(ctx)
 	if len(f.calls) != 0 || r.current().kind != protocol.RouteExternal {
 		t.Fatalf("re-probed within a minute: %v", f.calls)
@@ -83,7 +83,7 @@ func TestRouterAutoFallsBackAndReturns(t *testing.T) {
 		t.Errorf("probed on the preferred address: %v", f.calls)
 	}
 	// A failed request makes the next one pick again (once pickEvery passed).
-	f.up["192.168.0.12:9444"] = false
+	f.up["192.0.2.12:9444"] = false
 	r.mu.Lock()
 	r.picked = time.Now().Add(-pickEvery)
 	r.mu.Unlock()
@@ -96,7 +96,7 @@ func TestRouterAutoFallsBackAndReturns(t *testing.T) {
 
 func TestRouterSingleAddressNeverProbes(t *testing.T) {
 	f := &fakeProbe{}
-	r := &router{mode: protocol.RouteExternal, list: RouteURLs([]string{"https://192.168.0.12:9444"}, "https://relay.example.com:9444", protocol.RouteExternal), probe: f.probe}
+	r := &router{mode: protocol.RouteExternal, list: RouteURLs([]string{"https://192.0.2.12:9444"}, "https://relay.example.com:9444", protocol.RouteExternal), probe: f.probe}
 	r.ready(context.Background())
 	r.failed()
 	r.ready(context.Background())

@@ -11,8 +11,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// Ported from File Cellar's internal/clientservice/private_windows.go
-// (HardenState), for the relay state folder (SR-12, R4).
+// HardenState, for the relay state folder (SR-12, R4).
 //
 // The state folder holds the client's private key. On Windows a folder made
 // with os.MkdirAll(0700) and a file written 0600 get no access list of their

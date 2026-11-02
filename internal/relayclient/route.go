@@ -1,7 +1,6 @@
 package relayclient
 
-// r2-C: which relay address a client uses (D28), after File Cellar's
-// internal/syncclient/route.go. A client may know the relay on the local
+// r2-C: which relay address a client uses (D28). A client may know the relay on the local
 // network (the address it enrolled through, [relay] url, and the internal
 // address the relay advertises) and from outside (the public address the
 // relay advertises, or [relay] public_url). [relay] route chooses:

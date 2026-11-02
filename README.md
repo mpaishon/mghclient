@@ -1,5 +1,9 @@
 # mghclient — updating an app through mghRelay
 
+> **Not licensed. Not supported.** This code is published for the owner's
+> own builds only. No permission is granted to use, copy, modify or
+> distribute it, and no support of any kind is offered. See [LICENSE](LICENSE).
+
 `github.com/mpaishon/mghclient` is the client SDK for an application that
 gets its updates from an **mghRelay**, a self-hosted relay in front of
 GitHub releases. It does four things: **enrol** the instance once,
@@ -10,13 +14,10 @@ restarting stay the application's business.
 Mutual TLS, certificate renewal, revocation handling, LAN/WAN address
 selection and a private state folder come with it.
 
-**Onboarding a new app?** Follow [ONBOARDING.md](ONBOARDING.md); this page
-is the SDK's reference.
-
 ## 1. Adding the module
 
 ```sh
-go get github.com/mpaishon/mghclient@latest   # or a tag, e.g. @v0.1.0
+go get github.com/mpaishon/mghclient@latest   # or a tag, e.g. @v0.1.1
 ```
 
 It is a public module: no `GOPRIVATE`, no git credentials. It needs
@@ -43,7 +44,7 @@ fp, trusted, err := mghclient.Probe(ctx, relayURL)
 // Enrol tab.
 
 inst, err := mghclient.Enrol(ctx, cfg, mghclient.EnrolOptions{
-    URL:               relayURL,          // https://relay.home.lan:8444
+    URL:               relayURL,          // https://relay.example.net:8444
     Code:              code,              // "" asks for approval instead
     AcceptFingerprint: fp,                // once the user has confirmed it
     OnPending: func(p mghclient.Pending) {
@@ -121,7 +122,7 @@ Or call the pieces yourself:
 
 An `Offer` is `{app, version, channel, policy, platform, asset_id, name,
 size, sha256, signature?, published_at}`. `policy` is the resolved one
-(instance → app → household): `automatic` installs without asking, `notify`
+(instance → app → relay default): `automatic` installs without asking, `notify`
 asks first. The relay never offers a downgrade, nothing while the instance is
 **held**, and nothing it would not let the instance download.
 
@@ -146,8 +147,7 @@ compromised relay, sign each asset:
 4. Compile the public key into the app: `Config.SigningKeys`. The SDK refuses
    an offer without a valid signature (`ErrBadSignature`) before downloading.
 
-The signed message is `"MyGHAgent client release\n<tag>\n<goos-arch>\n<sha256>\n"`,
-the same format `mghagent` uses.
+The signed message is `"MyGHAgent client release\n<tag>\n<goos-arch>\n<sha256>\n"`.
 
 ## 5. Plugging into an existing updater
 
@@ -209,14 +209,13 @@ its progress, and keep the old source for hosts that are not enrolled.
 | `pending.json`, `pending.key` | A request waiting for approval (`0600`); removed once decided |
 
 On Windows the folder gets an owner-only ACL. Do not share one folder
-between apps or with `mghagent`.
+between apps or with any other relay client.
 
 ## Versions and where the code lives
 
-The module follows semantic versioning from `v0.1.0`; while it is `v0`, a
+The module follows semantic versioning from `v0.1.1` (`v0.1.0` is retracted); while it is `v0`, a
 minor version may change the API, and the release notes say how.
 
-This repository is **exported** from the relay's own repository, where the
-SDK is maintained beside the server it talks to (so the two are tested
-together). Don't edit files here: changes are made upstream and arrive in
-the next export. Issues are welcome.
+This repository is generated from an upstream repository by an export
+tool. Files here are overwritten by the next export; changes are not
+accepted here, and issues and pull requests are not monitored.

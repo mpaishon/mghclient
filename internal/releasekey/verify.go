@@ -1,6 +1,6 @@
 package releasekey
 
-// The verify side, ported from File Cellar's internal/releasekey. The public
+// The verify side. The public
 // half of the release key is compiled into mghagent, so a client can tell a
 // build this household released from anything else, whatever relay handed
 // it over: a compromised relay can at most offer an older genuine release.
@@ -33,7 +33,7 @@ var ExtraKeyHex string
 
 // MessageHeader is the first line of every signed release message, so a
 // signature made for a client release can never pass as one for anything
-// else (File Cellar's releases use their own header).
+// else (other products use their own header).
 const MessageHeader = "MyGHAgent client release\n"
 
 // Keys are the public keys compiled in, PrimaryHex first. A value that is not
