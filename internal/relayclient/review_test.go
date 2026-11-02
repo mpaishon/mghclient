@@ -1,6 +1,6 @@
 package relayclient
 
-// Regression tests for the adversarial review's findings (docs/SECURITY_REVIEW.md).
+// Regression tests for the adversarial review's findings.
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"github.com/mpaishon/mghclient/internal/relayclient/relaytest"
 )
 
-// SR-02: after a renewal the very next request presents the new
+// After a renewal the very next request presents the new
 // certificate. A kept-alive connection would carry the old one, which the
 // relay supersedes once the new one is seen anywhere, and the request would
 // be refused as if the client were revoked.
@@ -52,7 +52,7 @@ func TestRenewalDropsConnectionsCarryingTheOldCertificate(t *testing.T) {
 	}
 }
 
-// SR-10 (R7): Ping is a real authenticated request on a new connection, so
+// Ping is a real authenticated request on a new connection, so
 // a revoked client fails it — even with a kept-alive connection from before
 // the revocation — with ErrRefused, which says why.
 func TestPingFailsForARevokedClient(t *testing.T) {

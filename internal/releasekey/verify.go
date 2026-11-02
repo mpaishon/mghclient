@@ -7,7 +7,7 @@ package releasekey
 //
 // The signature covers Message(tag, platform, sha256): the release tag, the
 // goos-arch the zip is for, and the SHA-256 of the zip itself. bld release
-// (A1, signing side) signs exactly this message with the private half, which
+// signs exactly this message with the private half, which
 // lives outside the repository.
 
 import (

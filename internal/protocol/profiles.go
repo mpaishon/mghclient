@@ -1,7 +1,7 @@
 package protocol
 
-// N1: connection profiles (_temp/client_network_profiles.md), added
-// 2026-10-30. A file of its own, as wan.go is.
+// Connection profiles; added
+// 2026-10-30.
 //
 // A connection profile is one network a client may reach the relay from —
 // LAN, VPN, External — with the relay's address there. The household keeps
@@ -28,7 +28,7 @@ type ConnectionProfile struct {
 	// is always host:port.
 	RelayAddr string `json:"relay_addr"`
 	// ConsoleURL is the console on this network, https://host[:port], for
-	// install lines and enrolment (N4); "" is [web] public_url.
+	// install lines and enrolment; "" is [web] public_url.
 	ConsoleURL string `json:"console_url,omitempty"`
 	// Networks are CIDRs the relay treats as internal (an internal profile
 	// only). Never advertised to clients.
@@ -37,7 +37,7 @@ type ConnectionProfile struct {
 	Order int `json:"order"`
 }
 
-// Connection profile IDs the relay makes from the D28 addresses when no
+// Connection profile IDs the relay makes from the addresses when no
 // list is kept. (Not ProfileExternal: that is an access profile.)
 const (
 	ConnLAN      = "lan"
@@ -47,7 +47,7 @@ const (
 // MaxConnectionProfiles bounds the household's list.
 const MaxConnectionProfiles = 16
 
-// ---------------------------------------------------------------- N3
+// ----------------------------------------------------------------
 
 // ConnSetting is the console's connection profile setting for one client.
 // Managed false: the console leaves the choice to the machine. Rev changes

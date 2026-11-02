@@ -21,7 +21,7 @@ import (
 	"github.com/mpaishon/mghclient/internal/protocol"
 )
 
-// Approval enrolment on the client side (docs/UPGRADE_GATEWAY.md §8.2). The
+// Approval enrolment on the client side. The
 // request is answered with a poll token; the key whose CSR was sent is the
 // one that will be signed, so it and the token are kept in the state
 // folder (0600) until the request is decided, and a restart resumes the

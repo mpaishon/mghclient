@@ -76,25 +76,25 @@ type State struct {
 	EnrolledAt     time.Time  `json:"enrolled_at"`
 	NotAfter       time.Time  `json:"not_after"`
 	RenewedAt      *time.Time `json:"renewed_at,omitempty"`
-	// r2-C: the relay's internal and public addresses as it last advertised
-	// them (https://host:port), at enrolment and at every check-in (D28).
+	// The relay's internal and public addresses as it last advertised
+	// them (https://host:port), at enrolment and at every check-in.
 	// [relay] url and public_url in client.toml override them.
 	InternalURL string `json:"internal_url,omitempty"`
 	PublicURL   string `json:"public_url,omitempty"`
-	// N2: the relay's connection profiles as it last advertised them, and
+	// The relay's connection profiles as it last advertised them, and
 	// this machine's choice: the primary profile ("" = automatic, by the
 	// relay's order), whether to stay on it when it cannot be reached, and
-	// who locked the choice ("console", or "" — N3). Kept here, not in
+	// who locked the choice ("console", or ""). Kept here, not in
 	// client.toml, so a client rolled back one release still starts: it
 	// ignores fields it does not know.
 	Profiles       []protocol.ConnectionProfile `json:"profiles,omitempty"`
 	ConnProfile    string                       `json:"conn_profile,omitempty"`
 	ConnNoFallback bool                         `json:"conn_no_fallback,omitempty"`
 	ConnLockedBy   string                       `json:"conn_locked_by,omitempty"`
-	// ConnRev is the console setting last applied (N3).
+	// ConnRev is the console setting last applied.
 	ConnRev int64 `json:"conn_rev,omitempty"`
-	// App is the app this client enrolled as an instance of
-	// (docs/UPGRADE_GATEWAY.md); "" for the relay's own client.
+	// App is the app this client enrolled as an instance of;
+	// "" for the relay's own client.
 	App string `json:"app,omitempty"`
 }
 

@@ -1,6 +1,6 @@
 package relayclient
 
-// r2-B: check-in (D25) and the live channel (D26), and presence.json, the
+// Check-in and the live channel, and presence.json, the
 // client's record of when it last checked in and what its watched repos
 // last fetched.
 
@@ -76,11 +76,11 @@ func SavePresence(p Paths, st PresenceState) error {
 // answer: the watch list.
 func (c *Client) CheckIn(ctx context.Context, rep protocol.ClientReport) (protocol.CheckinReply, error) {
 	var out protocol.CheckinReply
-	// r2-C: the route in use and the configured mode (D28). The relay's
+	// The route in use and the configured mode. The relay's
 	// answer carries its addresses; a change is learned below.
 	c.routes.ready(ctx)
 	rep.Route, rep.RouteMode = c.Route()
-	// N2: the connection profile chosen here and the one in use.
+	// The connection profile chosen here and the one in use.
 	st := c.State()
 	rep.ConnProfile, rep.ConnNoFallback, rep.ConnLocked = st.ConnProfile, st.ConnNoFallback, st.ConnLockedBy != ""
 	rep.ConnProfileInUse, _ = c.ConnProfileInUse()
@@ -99,7 +99,7 @@ func (c *Client) CheckIn(ctx context.Context, rep protocol.ClientReport) (protoc
 		return out, fmt.Errorf("relay %s%s: %w", c.host(), protocol.PathCheckin, err)
 	}
 	c.learn(out.Relay)
-	c.applyConn(out.Conn) // N3
+	c.applyConn(out.Conn)
 	return out, nil
 }
 

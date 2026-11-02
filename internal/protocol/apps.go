@@ -2,7 +2,7 @@ package protocol
 
 import "time"
 
-// The upgrade gateway (docs/UPGRADE_GATEWAY.md, phase 1): apps the relay
+// The upgrade gateway: apps the relay
 // serves updates for, the generic offer, and what an instance reports.
 
 // AppMghagent is the relay's own client as an app. Every client enrolled
@@ -254,7 +254,7 @@ const (
 	NetworkWAN = "wan"
 )
 
-// Audit actions for approval enrolment (§12).
+// Audit actions for approval enrolment.
 const (
 	AuditInstanceRequested     = "instance_requested"
 	AuditInstanceApproved      = "instance_approved"

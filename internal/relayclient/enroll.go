@@ -61,7 +61,7 @@ type EnrollOptions struct {
 	// Version is this build, sent so the console can show it.
 	Version string
 
-	// App is the app this client is an instance of (docs/UPGRADE_GATEWAY.md):
+	// App is the app this client is an instance of:
 	// sent with a code, and without one it asks for approval. Empty is the
 	// code's app (the relay's own client).
 	App string
@@ -88,7 +88,7 @@ type EnrollResult struct {
 	WebFingerprint string // empty when the web certificate chained to the system roots
 	RelayURL       string
 	Names          []string // the names on the relay listener's certificate
-	PublicURL      string   // r2-C: the public address the relay advertised; "" for none
+	PublicURL      string   // The public address the relay advertised; "" for none
 	NotAfter       time.Time
 }
 
@@ -226,8 +226,8 @@ func webTrust(ctx context.Context, o EnrollOptions) (*tls.Config, Probe, error) 
 // enrolment route, and keeps what comes back. The key is written first, with
 // 0600, and the state file last: a state file means a complete enrolment.
 //
-// Without a code, and with App set, it asks the relay for approval instead
-// (docs/UPGRADE_GATEWAY.md §8.2): the key and the poll token are kept in the
+// Without a code, and with App set, it asks the relay for approval instead:
+// the key and the poll token are kept in the
 // state folder as a pending enrolment (both 0600), and Enroll polls until
 // the request is approved (the enrolment is then kept as with a code),
 // denied (ErrDenied) or ctx ends (the pending enrolment stays, and the next
@@ -361,7 +361,7 @@ func keep(o EnrollOptions, paths Paths, probe Probe, keyPEM []byte, reply protoc
 		return nil, fmt.Errorf("create the relay state folder: %w", err)
 	}
 	// Private before the key is written, so the key is never readable by
-	// others even for a moment (SR-12; Windows, where the modes do nothing).
+	// others even for a moment (Windows, where the modes do nothing).
 	if err := hardenState(paths); err != nil {
 		return nil, fmt.Errorf("make the relay state folder private: %w", err)
 	}
@@ -385,12 +385,12 @@ func keep(o EnrollOptions, paths Paths, probe Probe, keyPEM []byte, reply protoc
 		ClientID: reply.ClientID, Profile: reply.Profile, Hostname: o.Hostname,
 		RelayURL: relayURL, WebURL: strings.TrimRight(strings.TrimSpace(o.URL), "/"),
 		CAFingerprint: caFP, RelayNames: reply.Relay.Names,
-		InternalURL: endpointURL(reply.Relay.Internal), PublicURL: endpointURL(reply.Relay.Public), // r2-C
-		Profiles:   reply.Relay.Profiles, // N2
+		InternalURL: endpointURL(reply.Relay.Internal), PublicURL: endpointURL(reply.Relay.Public),
+		Profiles:   reply.Relay.Profiles,
 		EnrolledAt: time.Now().UTC(), NotAfter: pair.Leaf.NotAfter.UTC(),
 		App: o.App,
 	}
-	// N4: the install line chose this machine's connection profile.
+	// The install line chose this machine's connection profile.
 	if c := reply.Conn; c != nil && c.Managed {
 		st.ConnProfile, st.ConnNoFallback, st.ConnRev = c.Profile, c.NoFallback && c.Profile != "", c.Rev
 		if c.Locked {

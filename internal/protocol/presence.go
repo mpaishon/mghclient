@@ -1,8 +1,7 @@
 package protocol
 
-// r2-B: client presence (D25), service mode and promote-while-connected
-// (D26), and install scripts (D27). A file of its own so the round-2 streams
-// merge without touching each other's lines; added 2026-10-29.
+// Client presence, service mode and promote-while-connected,
+// and install scripts; added 2026-10-29.
 //
 // A client says how it runs at
 // check-in, so the console can tell whether it is the background service
@@ -12,7 +11,7 @@ package protocol
 
 import "time"
 
-// r2-B: [relay] paths.
+// [relay] paths.
 const (
 	// PathCheckin is POST: a ClientReport in, a CheckinReply out.
 	PathCheckin = RelayPrefix + "/checkin"
@@ -55,7 +54,7 @@ const (
 // no service manager the client knows).
 var ServiceStates = []string{"", ServiceNotInstalled, ServiceStopped, ServiceRunning, ServiceStarting, ServiceStopping, ServiceUnknown}
 
-// ClientReport is what a client says about itself at every check-in (D25).
+// ClientReport is what a client says about itself at every check-in.
 // Every text is short and free of control characters; the relay refuses one
 // that is not.
 type ClientReport struct {
@@ -85,12 +84,12 @@ type ClientReport struct {
 	// Fetched are the watched-repo fetches since the last check-in the
 	// relay acknowledged.
 	Fetched []WatchFetch `json:"fetched,omitempty"`
-	// r2-C: Route is the relay address this client uses now, RouteInternal
+	// Route is the relay address this client uses now, RouteInternal
 	// or RouteExternal; RouteMode is its client.toml [relay] route (auto,
-	// internal or external). Both "" from a client older than D28.
+	// internal or external). Both "" from a client that predates WAN access.
 	Route     string `json:"route,omitempty"`
 	RouteMode string `json:"route_mode,omitempty"`
-	// N2: the connection profile chosen on this machine ("" = automatic),
+	// The connection profile chosen on this machine ("" = automatic),
 	// whether it stays on it when it cannot be reached, whether the
 	// console locked the choice, and the profile in use now ("" when the
 	// address in use is none of the relay's profiles: [relay] url, say).
@@ -119,18 +118,18 @@ type WatchTarget struct {
 
 // CheckinReply is the relay's answer to a check-in.
 type CheckinReply struct {
-	// Watch is the client's watch list, set in the console (D26).
+	// Watch is the client's watch list, set in the console.
 	Watch []WatchTarget `json:"watch"`
 	// Every is how often a background service should check in, seconds.
 	Every int `json:"every"`
-	// r2-C: Relay is where the relay is, internally and publicly (D28), so
+	// Relay is where the relay is, internally and publicly, so
 	// a client learns a changed address at its next check-in.
 	Relay *RelayEndpoint `json:"relay,omitempty"`
 	// Update is an "Update now" the console queued while this client was
-	// not connected (D29): a CommandUpdate it answers through the ack route
+	// not connected: a CommandUpdate it answers through the ack route
 	// like one sent live. Repeated at every check-in until it is answered.
 	Update *Command `json:"update,omitempty"`
-	// N3: Conn is the console's connection profile setting for this
+	// Conn is the console's connection profile setting for this
 	// client; nil from a relay without one.
 	Conn *ConnSetting `json:"conn,omitempty"`
 }
@@ -141,7 +140,7 @@ const (
 	// now on: install and start it, then hand over.
 	CommandService = "service"
 	// CommandUpdate tells a client to install the release its relay offers
-	// now, whatever its update policy says, unless updates are off (D29).
+	// now, whatever its update policy says, unless updates are off.
 	CommandUpdate = "update"
 )
 
@@ -194,7 +193,7 @@ type PromoteResult struct {
 }
 
 // UpdateResult is the answer to POST /admin/clients/:id/update, and the
-// last such request kept on the client's presence (D29).
+// last such request kept on the client's presence.
 type UpdateResult struct {
 	// Plan is the client's answer, a Plan*; "" while Queued, or when a
 	// connected client did not answer in time.
@@ -238,18 +237,18 @@ type ClientPresence struct {
 	// UpdateOffered is the release the relay offers this client's platform
 	// now ("" when none); UpdateBlocked says why "Update now" cannot be
 	// asked ("" when it can); LastUpdate is the last such request, with
-	// Queued set while it waits for the client (D29).
+	// Queued set while it waits for the client.
 	UpdateOffered string        `json:"update_offered,omitempty"`
 	UpdateBlocked string        `json:"update_blocked,omitempty"`
 	LastUpdate    *UpdateResult `json:"last_update,omitempty"`
 	Watch         []WatchedRepo `json:"watch"`
-	// r2-C: External says the last check-in came from outside the local
-	// network (D28): a public peer address, or through [relay] proxy_addrs.
+	// External says the last check-in came from outside the local
+	// network: a public peer address, or through [relay] proxy_addrs.
 	External bool `json:"external"`
 	// WANRefusedAt is the last time a request from outside was refused
 	// because WAN access was off for this client (or for everyone).
 	WANRefusedAt *time.Time `json:"wan_refused_at,omitempty"`
-	// N3: Conn is the console's connection profile setting for it.
+	// Conn is the console's connection profile setting for it.
 	Conn ConnSetting `json:"conn"`
 }
 
@@ -259,7 +258,7 @@ type PresenceSummary struct {
 	Connected bool   `json:"connected"`
 	RunMode   string `json:"run_mode,omitempty"`
 	Service   string `json:"service,omitempty"`
-	// N3: the connection profile it uses now and the one it is set to
+	// The connection profile it uses now and the one it is set to
 	// (by the console, or on the machine); Locked by the console.
 	ConnInUse  string `json:"conn_in_use,omitempty"`
 	ConnSet    string `json:"conn_set,omitempty"`
@@ -275,7 +274,7 @@ type WatchRequest struct {
 const MaxWatched = 50
 
 // ---------------------------------------------------------------------------
-// Install scripts (D27)
+// Install scripts
 
 // Code kinds.
 const (
@@ -299,7 +298,7 @@ type InstallRequest struct {
 	Profile string `json:"profile"`
 	Hours   int    `json:"hours,omitempty"` // 0 = the code_default_hours setting
 	Service bool   `json:"service,omitempty"`
-	// N4: the connection profile the new client is set to ("" = automatic,
+	// The connection profile the new client is set to ("" = automatic,
 	// left to the machine): the install line uses that profile's console
 	// URL, and the setting is the console's from enrolment on.
 	ConnProfile    string `json:"conn_profile,omitempty"`
@@ -319,8 +318,8 @@ type InstallReply struct {
 	// trusted: the one line and the script accept only that certificate.
 	WebFingerprint string `json:"web_fingerprint,omitempty"`
 	// Lines are the one line for every family, Windows first, all for the
-	// same code: whoever pastes it on the wrong system picks the other
-	// (N0). The fields above are the requested family's, or Windows'.
+	// same code: whoever pastes it on the wrong system picks the other.
+	// The fields above are the requested family's, or Windows'.
 	Lines []InstallLine `json:"lines"`
 }
 
@@ -332,12 +331,12 @@ type InstallLine struct {
 	OneLiner    string `json:"one_liner"`
 }
 
-// r2-B: audit actions.
+// Audit actions.
 const (
 	AuditCheckin   = "checkin"        // a client's report changed
 	AuditWatch     = "watch_change"   // a client's watch list was set
 	AuditPromote   = "client_promote" // "Run as a service" asked of a client
-	AuditUpdateNow = "client_update"  // "Update now" asked of a client (D29)
+	AuditUpdateNow = "client_update"  // "Update now" asked of a client
 	AuditInstall   = "install_create" // an install code and script were made
 	AuditInstallU  = "install_use"    // an install script or client was fetched
 )

@@ -1,6 +1,6 @@
 package relayclient
 
-// r2-C: the route (D28).
+// The route.
 
 import (
 	"context"

@@ -2,7 +2,7 @@
 
 package relayclient
 
-// SR-12 (R4): the state folder and the key get a protected access list for
+// The state folder and the key get a protected access list for
 // the user, SYSTEM and Administrators — at enrolment, at renewal and at
 // every load — and a link or junction in their place is refused.
 

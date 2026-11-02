@@ -4,9 +4,6 @@
 //
 // JSON keys are snake_case. Times are RFC 3339 in UTC. Errors are
 // {"error": "..."} with an HTTP status that says what went wrong.
-//
-// Frozen in step 0 of docs/BUILD_PLAN.md. A stream that needs a field added
-// asks the lead; nothing here is changed in place by a stream.
 package protocol
 
 import "time"
@@ -187,7 +184,7 @@ type ContentEntry struct {
 // EnrollRequest is POSTed to PathEnroll on the web listener with a one-time
 // code. The client generated the key; only the CSR leaves the machine.
 type EnrollRequest struct {
-	// App is the app the client enrols as (docs/UPGRADE_GATEWAY.md). Empty
+	// App is the app the client enrols as. Empty
 	// is taken from the code, so an older mghagent still enrols.
 	App      string `json:"app,omitempty"`
 	Code     string `json:"code"`
@@ -202,13 +199,13 @@ type EnrollRequest struct {
 type RelayEndpoint struct {
 	Port  string   `json:"port"`
 	Names []string `json:"names"` // the [relay] san names its certificate covers
-	// r2-C: the relay's internal and public host:port (D28). Internal is the
+	// The relay's internal and public host:port. Internal is the
 	// relay_internal_addr setting, or one derived from [relay] san and
 	// listen; Public is relay_public_addr, empty when there is none. Sent at
 	// enrolment and in every check-in reply, so clients learn a change.
 	Internal string `json:"internal,omitempty"`
 	Public   string `json:"public,omitempty"`
-	// N1: Profiles are the household's connection profiles, in order, each
+	// Profiles are the household's connection profiles, in order, each
 	// RelayAddr as host:port and without Networks. Internal and Public stay
 	// for clients that predate profiles: the first internal and the first
 	// external profile.
@@ -224,7 +221,7 @@ type EnrollResponse struct {
 	CAFingerprint string        `json:"ca_fingerprint"` // sha256 of the CA certificate DER, hex
 	NotAfter      time.Time     `json:"not_after"`
 	Relay         RelayEndpoint `json:"relay"`
-	// N4: Conn is the console's connection profile setting, when the
+	// Conn is the console's connection profile setting, when the
 	// install line chose one.
 	Conn *ConnSetting `json:"conn,omitempty"`
 }
@@ -309,8 +306,8 @@ type Client struct {
 	LastSeenFrom string     `json:"last_seen_from,omitempty"`
 	RevokedAt    *time.Time `json:"revoked_at,omitempty"`
 	ForceRenew   bool       `json:"force_renew"`
-	// r2-C: AllowWAN lets this client in from outside the local network
-	// while the household's "Allow clients from outside" is on (D28). Off by
+	// AllowWAN lets this client in from outside the local network
+	// while the household's "Allow clients from outside" is on. Off by
 	// default.
 	AllowWAN bool `json:"allow_wan"`
 	// The upgrade gateway: the app this client is an instance of, its
@@ -333,10 +330,10 @@ type Code struct {
 	UsedAt    *time.Time `json:"used_at,omitempty"`
 	ClientID  string     `json:"client_id,omitempty"`
 	Code      string     `json:"code,omitempty"` // only in the create reply
-	// r2-B: Kind is CodeKindCode ("") for a code typed by a person, or
-	// CodeKindInstall for an install script's (D27). Either enrols.
+	// Kind is CodeKindCode ("") for a code typed by a person, or
+	// CodeKindInstall for an install script's. Either enrols.
 	Kind string `json:"kind,omitempty"`
-	// N4: the connection profile an install code sets its client to.
+	// The connection profile an install code sets its client to.
 	ConnProfile    string `json:"conn_profile,omitempty"`
 	ConnNoFallback bool   `json:"conn_no_fallback,omitempty"`
 	ConnLocked     bool   `json:"conn_locked,omitempty"`
@@ -354,7 +351,7 @@ type User struct {
 	Disabled    bool       `json:"disabled"`
 }
 
-// APIToken scopes (D17). A console session holds every scope.
+// APIToken scopes. A console session holds every scope.
 const (
 	ScopeStatusRead   = "status:read"
 	ScopeCatalogRead  = "catalog:read"
@@ -366,7 +363,7 @@ const (
 
 // AllScopes is every scope a token may hold.
 var AllScopes = []string{ScopeStatusRead, ScopeCatalogRead, ScopeCacheWrite, ScopeRetentionRun, ScopeClientsRead, ScopeWebhooks,
-	ScopeAppsRead, ScopeAppsWrite, ScopeEnrollApprove} // apps: docs/UPGRADE_GATEWAY.md
+	ScopeAppsRead, ScopeAppsWrite, ScopeEnrollApprove} // the apps scopes
 
 // TokenPrefix starts every API token, so a leaked one is recognisable.
 const TokenPrefix = "mghr_"
@@ -384,7 +381,7 @@ type APIToken struct {
 	Token        string     `json:"token,omitempty"` // only in the create reply
 }
 
-// ShareLink is an expiring download link for one asset (D13).
+// ShareLink is an expiring download link for one asset.
 type ShareLink struct {
 	ID        string     `json:"id"`
 	AssetID   int64      `json:"asset_id"`
@@ -634,7 +631,7 @@ type Status struct {
 	CertsExpiring   int        `json:"certs_expiring"` // within 14 days
 	DefaultPassword bool       `json:"default_password"`
 
-	// r2-A: D21 — the relay's GitHub token as GitHub reported it (nil until
+	// The relay's GitHub token as GitHub reported it (nil until
 	// a probe has answered).
 	GitHubToken *GitHubToken `json:"github_token,omitempty"`
 
@@ -651,10 +648,10 @@ type Event struct {
 	Text string    `json:"text"`
 }
 
-// r2-A: round 2, stream A — GitHub token expiry (D21), backup (D22) and
-// verification codes (D24).
+// GitHub token expiry, backup and
+// verification codes.
 
-// GitHubToken is what the relay knows of its own GitHub credential (D21).
+// GitHubToken is what the relay knows of its own GitHub credential.
 // GitHub reports a token's expiry in the github-authentication-token-
 // expiration header; a token without one never expires.
 type GitHubToken struct {
@@ -678,13 +675,13 @@ const (
 	TokenKindUnknown     = "unknown"
 )
 
-// GitHubTokenWarnDays is how close to its expiry the token warns (D21).
+// GitHubTokenWarnDays is how close to its expiry the token warns.
 const GitHubTokenWarnDays = 30
 
 // VerifyCodePrefix starts every verification code: mghv_<id>_<secret>.
 const VerifyCodePrefix = "mghv_"
 
-// VerifyCode is a verification code as listed (D24); the code itself is
+// VerifyCode is a verification code as listed; the code itself is
 // shown once, in the create reply.
 type VerifyCode struct {
 	ID           string     `json:"id"`
@@ -718,10 +715,10 @@ type Notices struct {
 	Verification []VerifyCode `json:"verification"`
 }
 
-// BackupPassphraseMin is the shortest backup passphrase accepted (D22).
+// BackupPassphraseMin is the shortest backup passphrase accepted.
 const BackupPassphraseMin = 12
 
-// Audit actions of round 2, stream A.
+// Audit actions for the GitHub token, backups and verification.
 const (
 	AuditGitHubToken = "github_token" // a day-band of the token's expiry was reached
 	AuditVerify      = "verify"       // a verification code made, used or revoked

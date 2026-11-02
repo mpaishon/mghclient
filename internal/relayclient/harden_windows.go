@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// HardenState, for the relay state folder (SR-12, R4).
+// HardenState, for the relay state folder.
 //
 // The state folder holds the client's private key. On Windows a folder made
 // with os.MkdirAll(0700) and a file written 0600 get no access list of their
@@ -54,7 +54,7 @@ func hardenState(p Paths) error {
 }
 
 // stateUserSID is whose the state folder is: SetStateOwner's SID, else
-// this process's user (r2-B).
+// this process's user.
 func stateUserSID() (*windows.SID, error) {
 	if stateOwner != "" {
 		sid, err := windows.StringToSid(stateOwner)

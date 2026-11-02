@@ -4,8 +4,8 @@
 // serves the client API from in-memory data, speaking the protocol types.
 //
 // It is a test helper only. It does not import the relay's server packages:
-// the client is tested against the contract in internal/protocol and
-// docs/API.md, not against an implementation.
+// the client is tested against the contract in internal/protocol,
+// not against an implementation.
 package relaytest
 
 import (
@@ -65,10 +65,10 @@ type Data struct {
 	// RenewAfter, when set, is what /whoami says.
 	RenewAfter time.Time
 	// ConnProfiles are the connection profiles the enrolment reply
-	// advertises (N2).
+	// advertises.
 	ConnProfiles []protocol.ConnectionProfile
 	// Conn is the console's connection profile setting the enrolment reply
-	// carries (N4).
+	// carries.
 	Conn *protocol.ConnSetting
 }
 

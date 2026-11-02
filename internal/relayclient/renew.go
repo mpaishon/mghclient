@@ -18,7 +18,7 @@ import (
 )
 
 // Renewal. The relay
-// renews a client certificate from 30 days before it expires (D11) and says
+// renews a client certificate from 30 days before it expires and says
 // when in /whoami (renew_after); without that word the client falls back to
 // the same rule itself.
 
@@ -93,7 +93,7 @@ func (c *Client) Renew(ctx context.Context) error {
 	if err := c.id.check(pair.Leaf); err != nil {
 		return err
 	}
-	// The new key goes into a private folder (SR-12), and every file is
+	// The new key goes into a private folder, and every file is
 	// private again once it is in place.
 	if err := hardenState(c.paths); err != nil {
 		return fmt.Errorf("renewal: make the relay state folder private: %w", err)

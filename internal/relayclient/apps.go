@@ -15,8 +15,8 @@ import (
 	"github.com/mpaishon/mghclient/internal/protocol"
 )
 
-// The upgrade gateway's routes for an app instance
-// (docs/UPGRADE_GATEWAY.md §6.2, §13): the offer, the app's releases, its
+// The upgrade gateway's routes for an app instance:
+// the offer, the app's releases, its
 // assets and the report. Every one is scoped by the relay to this client's
 // own app; another app's is 403.
 

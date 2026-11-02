@@ -1,6 +1,6 @@
 package relayclient
 
-// N5: the TUI's view of the connection profiles, a reachability check per
+// The TUI's view of the connection profiles, a reachability check per
 // profile, and "try another network once": a profile used for this run
 // only, without changing the stored choice — allowed even when the console
 // locked it, so a machine whose locked address died can still reach the

@@ -1,7 +1,6 @@
 package protocol
 
-// r2-C: WAN access (D28). A file of its own so the round-2 streams merge
-// without touching each other's lines; added 2026-10-29.
+// WAN access; added 2026-10-29.
 //
 // A connection to the [relay] listener is external when its TCP peer is not
 // a private, loopback or link-local address, or when it arrives from one of
@@ -43,7 +42,7 @@ const (
 	WANOffHousehold = "household"
 )
 
-// r2-C: audit actions.
+// Audit actions.
 const (
 	AuditConnection = "connection_change" // the household's connection settings changed
 	AuditWANRefused = "wan_refused"       // an external request was refused
@@ -86,8 +85,8 @@ type Connection struct {
 	// the master switch cannot be turned on until the relay runs with host
 	// networking.
 	AddressesHidden bool `json:"addresses_hidden,omitempty"`
-	// N1: Profiles are the connection profiles as kept (RelayAddr may be
-	// empty: derived); ProfilesKept is false while they are only the D28
+	// Profiles are the connection profiles as kept (RelayAddr may be
+	// empty: derived); ProfilesKept is false while they are only the
 	// addresses, not yet saved as a list.
 	Profiles     []ConnectionProfile `json:"profiles"`
 	ProfilesKept bool                `json:"profiles_kept"`
@@ -98,7 +97,7 @@ type ConnectionUpdate struct {
 	AllowOutside *bool   `json:"allow_outside,omitempty"`
 	InternalAddr *string `json:"internal_addr,omitempty"`
 	PublicAddr   *string `json:"public_addr,omitempty"`
-	// N1: Profiles replaces the whole list. InternalAddr and PublicAddr
+	// Profiles replaces the whole list. InternalAddr and PublicAddr
 	// still work: they edit the first internal and external profile.
 	Profiles *[]ConnectionProfile `json:"profiles,omitempty"`
 }

@@ -1,6 +1,6 @@
 package releasekey
 
-// The signing side (A1, used by bld): signing the release message and the
+// The signing side (used by bld): signing the release message and the
 // key file. The verifying side
 // — the compiled-in public keys and Verify — is in verify.go.
 //

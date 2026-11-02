@@ -27,9 +27,9 @@ type Options struct {
 	StateDir string
 	// URL overrides the relay address enrolment recorded ([relay] url).
 	URL string
-	// r2-C: PublicURL overrides the public address the relay advertised
+	// PublicURL overrides the public address the relay advertised
 	// ([relay] public_url); Route is [relay] route: auto (""), internal or
-	// external (D28).
+	// external.
 	PublicURL string
 	Route     string
 	// Version is this build, for the User-Agent.
@@ -46,14 +46,14 @@ type Options struct {
 // Client is the mutual-TLS client of the relay's [relay] listener. It trusts
 // the relay CA from enrolment and nothing else: never the system roots.
 type Client struct {
-	routes *router // r2-C: the addresses and the one in use
+	routes *router // The addresses and the one in use
 	httpc  *http.Client
 	id     *Identity
 	paths  Paths
 	opts   Options
 	stateM sync.Mutex
 	state  *State
-	// trying is the connection profile tried for this run only (N5).
+	// trying is the connection profile tried for this run only.
 	trying string
 
 	lastMu    sync.Mutex
@@ -67,7 +67,7 @@ func New(o Options) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Every load makes the folder and the key private again (SR-12): a
+	// Every load makes the folder and the key private again: a
 	// state_dir moved, restored or created outside the profile is fixed
 	// before the key is read, and one that cannot be is refused.
 	if err := hardenState(paths); err != nil {
@@ -85,7 +85,7 @@ func New(o Options) (*Client, error) {
 	if err != nil || u.Scheme != "https" || u.Host == "" {
 		return nil, fmt.Errorf("relay address %q is not https://host:port", raw)
 	}
-	// r2-C: the route (D28). ServerName is left empty so each connection
+	// The route. ServerName is left empty so each connection
 	// checks the relay certificate against the host of the address in use.
 	switch o.Route {
 	case "", protocol.RouteAuto, protocol.RouteInternal, protocol.RouteExternal:
@@ -145,7 +145,7 @@ type StatusError struct {
 	Message string
 	// WAN is the relay's X-Relay-WAN-Refused: the request came from outside
 	// and WAN access is off for this client ("client") or for everyone
-	// ("household"). r2-C.
+	// ("household").
 	WAN string
 }
 
@@ -196,7 +196,7 @@ func (c *Client) endpoint(path string, q url.Values) string {
 }
 
 func (c *Client) do(ctx context.Context, method, path string, q url.Values, body io.Reader) (*http.Response, error) {
-	c.routes.ready(ctx) // r2-C: choose (or re-check) the address first
+	c.routes.ready(ctx) // Choose (or re-check) the address first
 	req, err := http.NewRequestWithContext(ctx, method, c.endpoint(path, q), body)
 	if err != nil {
 		return nil, err
@@ -212,7 +212,7 @@ func (c *Client) do(ctx context.Context, method, path string, q url.Values, body
 	resp, err := c.httpc.Do(req)
 	if err != nil {
 		if ctx.Err() == nil {
-			c.routes.failed() // r2-C: the next request picks an address again
+			c.routes.failed() // The next request picks an address again
 		}
 		return nil, fmt.Errorf("relay %s: %w", req.URL.Host, err)
 	}
@@ -494,7 +494,7 @@ var ErrRefused = errors.New("the relay refused this client's certificate: it has
 // Ping makes one authenticated request (GET /relay/whoami) on a fresh
 // connection, for --doctor. It proves the relay's certificate chains to the
 // enrolment CA for this host name and that the relay accepts this client.
-// A bare handshake proves less than it seems (SR-10, R7): under TLS 1.3 the
+// A bare handshake proves less than it seems: under TLS 1.3 the
 // client finishes its side before the relay judges the certificate, so a
 // revoked client's handshake "succeeds" and the refusal arrives with the
 // first read. A refusal is ErrRefused.
@@ -502,7 +502,7 @@ func (c *Client) Ping(ctx context.Context) (time.Duration, error) {
 	tr := c.httpc.Transport.(*http.Transport).Clone()
 	tr.DisableKeepAlives = true // a new handshake, judged against today's revocations
 	defer tr.CloseIdleConnections()
-	c.routes.ready(ctx) // r2-C
+	c.routes.ready(ctx)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.endpoint(protocol.PathWhoAmI, nil), nil)
 	if err != nil {
 		return 0, err
@@ -519,7 +519,7 @@ func (c *Client) Ping(ctx context.Context) (time.Duration, error) {
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxReply))
 	resp.Body.Close()
 	switch {
-	case resp.StatusCode == http.StatusForbidden && resp.Header.Get(protocol.HeaderWANRefused) != "": // r2-C
+	case resp.StatusCode == http.StatusForbidden && resp.Header.Get(protocol.HeaderWANRefused) != "":
 		return 0, &StatusError{Code: resp.StatusCode, WAN: resp.Header.Get(protocol.HeaderWANRefused)}
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
 		return 0, ErrRefused

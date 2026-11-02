@@ -1,6 +1,6 @@
 package relayclient
 
-// N2: connection profiles on the client.
+// Connection profiles on the client.
 
 import (
 	"context"
@@ -54,12 +54,12 @@ func TestProfileCandidates(t *testing.T) {
 			t.Errorf("%s:\n got %s\nwant %s", c.name, got, c.want)
 		}
 	}
-	// client.toml overrides an address: the D28 list, as before.
+	// client.toml overrides an address: the list, as before.
 	st := &State{RelayURL: "https://relay-lan.example:9444", Profiles: threeProfiles, ConnProfile: "vpn"}
 	if got := profileHosts(candidates(Options{URL: "https://203.0.113.5:9444"}, st)); got != "-=203.0.113.5:9444" {
 		t.Errorf("[relay] url: %s", got)
 	}
-	// An older relay advertised none: the D28 list.
+	// An older relay advertised none: the list.
 	st = &State{RelayURL: "https://relay-lan.example:9444", PublicURL: "https://relay.example.com:443"}
 	if got := profileHosts(candidates(Options{}, st)); got != "-=relay-lan.example:9444,-=relay.example.com:443" {
 		t.Errorf("no profiles: %s", got)
@@ -137,7 +137,7 @@ func TestChoosingAConnectionProfile(t *testing.T) {
 	}
 }
 
-// N3: the console's setting is applied once per revision, so a choice made
+// The console's setting is applied once per revision, so a choice made
 // here afterwards stands; while locked it is enforced at every reply and
 // cannot be changed here; unmanaged, it only lifts the lock.
 func TestConsoleConnSetting(t *testing.T) {
@@ -192,7 +192,7 @@ func TestConsoleConnSetting(t *testing.T) {
 	}
 }
 
-// N4: an install line's setting arrives with the enrolment.
+// An install line's setting arrives with the enrolment.
 func TestEnrolmentCarriesTheConnSetting(t *testing.T) {
 	s := relaytest.New(t, fakeData())
 	s.SetData(func(d *relaytest.Data) {

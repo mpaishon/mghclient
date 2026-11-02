@@ -1,6 +1,6 @@
 package relayclient
 
-// r2-C: which relay address a client uses (D28). A client may know the relay on the local
+// Which relay address a client uses. A client may know the relay on the local
 // network (the address it enrolled through, [relay] url, and the internal
 // address the relay advertises) and from outside (the public address the
 // relay advertises, or [relay] public_url). [relay] route chooses:
@@ -49,7 +49,7 @@ const (
 type candidate struct {
 	u    *url.URL
 	kind string // protocol.RouteInternal or protocol.RouteExternal
-	// N2: the connection profile it is (id and name); "" for an address
+	// The connection profile it is (id and name); "" for an address
 	// that is none of the relay's profiles ([relay] url, the enrolment
 	// address kept as a last resort).
 	profile, name string
@@ -222,7 +222,7 @@ func (c *Client) Route() (inUse, mode string) {
 	return c.routes.current().kind, c.routes.mode
 }
 
-// ConnProfileInUse is the connection profile in use (N2): its id and name,
+// ConnProfileInUse is the connection profile in use: its id and name,
 // or "" when the address in use is none of the relay's profiles.
 func (c *Client) ConnProfileInUse() (id, name string) {
 	cur := c.routes.current()
@@ -231,7 +231,7 @@ func (c *Client) ConnProfileInUse() (id, name string) {
 
 // RouteText is the route as --status, --doctor and the TUI show it:
 // "internal (auto)", "external (operator choice)"; with connection profiles
-// (N2) "LAN (auto)", "VPN (chosen)", "External (LAN cannot be reached)",
+// "LAN (auto)", "VPN (chosen)", "External (LAN cannot be reached)",
 // "LAN (chosen, no fallback)".
 func (c *Client) RouteText() string {
 	inUse, mode := c.Route()
@@ -239,7 +239,7 @@ func (c *Client) RouteText() string {
 		if name == "" {
 			name = "the enrolment address"
 		}
-		if v := c.ConnView(); v.Trying != "" { // N5
+		if v := c.ConnView(); v.Trying != "" {
 			return name + " (this run only)"
 		}
 		st := c.State()
@@ -265,7 +265,7 @@ func (c *Client) RouteText() string {
 
 // candidates is this client's address list from its options and state:
 // the relay's connection profiles when it advertised them and client.toml
-// overrides no address (N2), else the D28 internal and public addresses.
+// overrides no address, else the internal and public addresses.
 func candidates(o Options, st *State) []candidate {
 	if o.URL == "" && o.PublicURL == "" {
 		if list := profileCandidates(st, o.Route); len(list) > 0 {
@@ -309,7 +309,7 @@ func (c *Client) learn(ep *protocol.RelayEndpoint) {
 		return
 	}
 	st := *c.state
-	st.InternalURL, st.PublicURL, st.Profiles = in, pub, ep.Profiles // N2
+	st.InternalURL, st.PublicURL, st.Profiles = in, pub, ep.Profiles
 	if err := SaveState(c.paths, &st); err != nil {
 		c.stateM.Unlock()
 		logrus.WithError(err).Warn("relay: could not record the relay's addresses")
@@ -321,7 +321,7 @@ func (c *Client) learn(ep *protocol.RelayEndpoint) {
 	c.routes.set(c.listFor(&st))
 }
 
-// ---------------------------------------------------------------- N2
+// ----------------------------------------------------------------
 
 // profileCandidates is the address list from the relay's connection
 // profiles (in the relay's order), or nil when it advertised none:
@@ -421,7 +421,7 @@ func profileByID(list []protocol.ConnectionProfile, id string) *protocol.Connect
 	return nil
 }
 
-// ErrConnLocked is a choice the console locked (N3).
+// ErrConnLocked is a choice the console locked.
 var ErrConnLocked = errors.New("the console has locked this machine's connection profile")
 
 // SetConnProfile chooses this machine's connection profile: an id the
@@ -447,7 +447,7 @@ func (c *Client) SetConnProfile(id string, noFallback bool) error {
 	}
 	st := *c.state
 	st.ConnProfile, st.ConnNoFallback = id, noFallback && id != ""
-	c.trying = "" // a real choice ends a try (N5)
+	c.trying = "" // a real choice ends a try
 	if err := SaveState(c.paths, &st); err != nil {
 		c.stateM.Unlock()
 		return fmt.Errorf("record the connection profile: %w", err)
@@ -461,7 +461,7 @@ func (c *Client) SetConnProfile(id string, noFallback bool) error {
 }
 
 // applyConn applies the console's connection profile setting from a
-// check-in or enrolment reply (N3): once per revision, so a choice made on
+// check-in or enrolment reply: once per revision, so a choice made on
 // this machine afterwards stands, and at every reply while it is locked.
 // A setting the console no longer manages only lifts the lock.
 func (c *Client) applyConn(set *protocol.ConnSetting) {
