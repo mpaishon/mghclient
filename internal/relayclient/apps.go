@@ -24,10 +24,20 @@ import (
 // (goos-arch), nil when there is none. current is the version running, so
 // the relay answers nothing when it is up to date.
 func (c *Client) AppUpdate(ctx context.Context, app, platform, current string) (*protocol.Offer, error) {
+	return c.AppUpdateMode(ctx, app, platform, current, "")
+}
+
+// AppUpdateMode is AppUpdate declaring the install mode (install_mode=;
+// none when empty), so the relay caps a reports-only install's policy from
+// its first check. A relay that predates install modes ignores it.
+func (c *Client) AppUpdateMode(ctx context.Context, app, platform, current, mode string) (*protocol.Offer, error) {
 	q := url.Values{}
 	q.Set("platform", platform)
 	if current != "" {
 		q.Set("current", current)
+	}
+	if mode != "" {
+		q.Set("install_mode", mode)
 	}
 	var o protocol.Offer
 	code, err := c.getJSON(ctx, protocol.AppPath(url.PathEscape(app), "/update"), q, &o)

@@ -311,7 +311,7 @@ func Enroll(ctx context.Context, o EnrollOptions) (*EnrollResult, error) {
 	case http.StatusTooManyRequests:
 		return nil, errors.New("too many failed enrolments from this address; wait and try again")
 	case http.StatusNotFound:
-		return nil, fmt.Errorf("%s has no enrolment route: is it an mghRelay, and is enrolment open to this address?", probe.Addr)
+		return nil, fmt.Errorf("%s has no enrolment route: is it a GH Update Relay, and is enrolment open to this address?", probe.Addr)
 	default:
 		return nil, fmt.Errorf("enrolment refused: HTTP %d %s", status, errorText(raw))
 	}

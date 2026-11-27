@@ -1,4 +1,4 @@
-// Package relaytest is an in-process fake mghRelay for mghagent's tests: a
+// Package relaytest is an in-process fake GH Update Relay (mghRelay) for mghagent's tests: a
 // web listener that answers enrolment (with a self-signed certificate, so
 // trust on first use is exercised) and a mutual-TLS [relay] listener that
 // serves the client API from in-memory data, speaking the protocol types.

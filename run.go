@@ -15,7 +15,10 @@ type RunOptions struct {
 	Detail func() string
 	// OnOffer is called with each offer (the same one again on later
 	// cycles until it is installed or withdrawn). Honour offer.Policy:
-	// PolicyAutomatic installs, PolicyNotify asks the user first.
+	// PolicyAutomatic installs, PolicyNotify asks the user first. A
+	// reports-only install (InstallReport) is offered its release too,
+	// under PolicyNotify at most: show "release X is available: redeploy"
+	// and install nothing.
 	OnOffer func(*Offer)
 	// OnError is told of a cycle that failed; Run goes on. Nil ignores.
 	OnError func(error)

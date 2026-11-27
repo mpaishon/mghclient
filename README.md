@@ -1,11 +1,12 @@
-# mghclient — updating an app through mghRelay
+# mghclient — updating an app through a GH Update Relay
 
 > **Not licensed. Not supported.** This code is published for the owner's
 > own builds only. No permission is granted to use, copy, modify or
 > distribute it, and no support of any kind is offered. See [LICENSE](LICENSE).
 
 `github.com/mpaishon/mghclient` is the client SDK for an application that
-gets its updates from an **mghRelay**, a self-hosted relay in front of
+gets its updates from a **GH Update Relay** (the `mghRelay` server; that is
+the component's name in every user-facing surface), a self-hosted relay in front of
 GitHub releases. It does four things: **enrol** the instance once,
 **check** for an update, **download** it with its digest (and signature)
 verified, and **report** what the instance runs. Installing, staging and
@@ -13,6 +14,12 @@ restarting stay the application's business.
 
 Mutual TLS, certificate renewal, revocation handling, LAN/WAN address
 selection and a private state folder come with it.
+
+Who uses it depends on the app's update model on the relay (the console's
+**Updates**): in a **Standalone** app (house standard Profile B) every
+install uses the SDK; in a **Hub-and-spoke** app (Profile A) only the app's
+server, the hub, does, and the hub updates its own clients. See
+[ONBOARDING.md](ONBOARDING.md) §0.
 
 ## 1. Adding the module
 
@@ -31,9 +38,18 @@ cfg := mghclient.Config{
     App:      "myapp",                          // the app's slug on the relay
     StateDir: filepath.Join(dataDir, "relay"),  // a folder of its own; made private
     Version:  buildinfo.Version,                // the release tag, e.g. "v2026.11.01"
+    // InstallMode: mghclient.InstallReport,    // a container: reports only (below)
     // SigningKeys: []ed25519.PublicKey{releasePub}, // when the app signs (§4)
 }
 ```
+
+`InstallMode` is `InstallSelf` (the default: the install takes offers and
+swaps its binary) or `InstallReport` (a container: it reports its version,
+the relay shows it as behind when it is, and it is upgraded by
+redeploying). Every `Report`, `Run`'s included, carries it; the relay never
+asks a reports-only install to install (`automatic` reaches it as
+`notify`), and `Download` refuses with `ErrReportsOnly`. Set it from the
+app's own setting, which the image sets; never guess it.
 
 ## 2. Enrolling
 
@@ -128,8 +144,8 @@ asks first. The relay never offers a downgrade, nothing while the instance is
 
 Report the update states as they happen — `staged` once downloaded and
 verified, `swapped` on first start of the new version, `confirmed` when it is
-healthy, `rolled_back` / `failed` otherwise — and the app's Instances tab
-shows where every instance stands.
+healthy, `rolled_back` / `failed` otherwise — and the app's Installs tab
+(Hubs for a hub-and-spoke app) shows where every instance stands.
 
 ## 4. Signing releases (optional)
 
@@ -197,6 +213,7 @@ its progress, and keep the old source for hosts that are not enrolled.
 | `ErrBadSignature` | Offer not signed by a compiled-in key | Do not install; report `failed` |
 | `ErrSHAMismatch` | Bytes do not match the digest | Do not install; retry later |
 | `ErrWrongApp` | The state folder belongs to another app | Use a folder per app |
+| `ErrReportsOnly` | `Download` by an `InstallReport` install | Don't: show "release X is available: redeploy" |
 | other | Network, relay down, rate limit | Retry on the next cycle |
 
 ## 7. The state folder

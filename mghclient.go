@@ -1,5 +1,6 @@
 // Package mghclient is the client SDK for an application that updates
-// through an mghRelay. Import it as github.com/mpaishon/mghclient (see
+// through a GH Update Relay (an mghRelay server). Import it as
+// github.com/mpaishon/mghclient (see
 // README.md there). It is not licensed for use by anyone but its owner.
 //
 // An instance of an app enrols once — with a one-time code, or by asking
@@ -61,6 +62,20 @@ const (
 	StateFailed     = protocol.UpdateFailed     // the update could not be applied
 )
 
+// Install modes for Config.InstallMode and Report.InstallMode: how an
+// install is kept current. Empty is InstallSelf.
+const (
+	// InstallSelf is a self-updating install (a native one): it takes the
+	// offer, downloads, verifies and swaps its binary.
+	InstallSelf = protocol.InstallModeSelf
+	// InstallReport is a reports-only install (a container): it enrols and
+	// reports its running version, is shown on the relay as behind when it
+	// is, and is upgraded by redeploying. The relay never asks it to
+	// install (an automatic policy reaches it as notify), and Download
+	// refuses (ErrReportsOnly).
+	InstallReport = protocol.InstallModeReport
+)
+
 // Update policies an Offer carries (resolved by the relay: the instance's,
 // else the app's, else the household's).
 const (
@@ -89,6 +104,9 @@ var (
 	ErrSHAMismatch = relayclient.ErrSHAMismatch
 	// ErrWrongApp is a state folder enrolled as another app.
 	ErrWrongApp = errors.New("mghclient: the state folder is enrolled as another app")
+	// ErrReportsOnly is a Download by an install whose Config.InstallMode
+	// is InstallReport: it is upgraded by redeploying, never in place.
+	ErrReportsOnly = errors.New("mghclient: this install reports only (InstallReport): it is upgraded by redeploying, not by downloading the release")
 )
 
 // Config is how an application uses the relay. App and StateDir are
@@ -111,6 +129,13 @@ type Config struct {
 	// digest check and mutual TLS still hold.
 	SigningKeys []ed25519.PublicKey
 
+	// InstallMode is how this install is kept current: InstallSelf (or
+	// empty) for one that updates itself, InstallReport for one that only
+	// reports its version and is redeployed (a container image sets it;
+	// never guess it). Every Report, Run's included, carries it. A relay
+	// that predates install modes ignores it.
+	InstallMode string
+
 	// RelayURL overrides the relay address enrolment recorded; PublicURL
 	// the public one; Route is auto (""), internal or external.
 	RelayURL, PublicURL, Route string
@@ -120,8 +145,13 @@ func (c Config) check() error {
 	if strings.TrimSpace(c.App) == "" || strings.TrimSpace(c.StateDir) == "" {
 		return errors.New("mghclient: Config needs App and StateDir")
 	}
+	if !protocol.ValidInstallMode(c.InstallMode) {
+		return fmt.Errorf("mghclient: Config.InstallMode %q is not %q or %q", c.InstallMode, InstallSelf, InstallReport)
+	}
 	return nil
 }
+
+func (c Config) reportsOnly() bool { return c.InstallMode == InstallReport }
 
 func (c Config) platform() string {
 	if c.Platform != "" {
@@ -279,9 +309,11 @@ func refused(err error) error {
 }
 
 // Check asks for an update for the running version and platform: the
-// offer, or nil when there is nothing to install.
+// offer, or nil when there is nothing to install. It declares
+// Config.InstallMode, so a reports-only install is never offered an
+// automatic install, even before its first Report.
 func (i *Instance) Check(ctx context.Context) (*Offer, error) {
-	o, err := i.c.AppUpdate(ctx, i.cfg.app(), i.cfg.platform(), i.version())
+	o, err := i.c.AppUpdateMode(ctx, i.cfg.app(), i.cfg.platform(), i.version(), i.cfg.InstallMode)
 	return o, refused(err)
 }
 
@@ -297,6 +329,9 @@ func (i *Instance) Releases(ctx context.Context) ([]Release, error) {
 // the signature is checked against that digest. On any error what was
 // written to w must not be used — DownloadFile handles that for a file.
 func (i *Instance) Download(ctx context.Context, offer *Offer, w io.Writer, progress func(int64)) error {
+	if i.cfg.reportsOnly() {
+		return ErrReportsOnly
+	}
 	if offer == nil || offer.AssetID == 0 {
 		return errors.New("mghclient: no offer to download")
 	}
@@ -330,6 +365,9 @@ func (i *Instance) verifySignature(offer *Offer) error {
 // place only once the digest (and signature) hold; nothing is left behind
 // on an error.
 func (i *Instance) DownloadFile(ctx context.Context, offer *Offer, path string, progress func(int64)) error {
+	if i.cfg.reportsOnly() {
+		return ErrReportsOnly
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -351,16 +389,23 @@ func (i *Instance) DownloadFile(ctx context.Context, offer *Offer, path string, 
 	return err
 }
 
-// Report tells the relay what this instance runs (Version, Platform
-// default from Config) and how its last update went. The reply carries the
-// offer, so an instance that reports needs no Check, and when to check
-// again (Every).
+// Report tells the relay what this instance runs (Version, Platform and
+// InstallMode default from Config) and how its last update went. The
+// reply carries the offer, so an instance that reports needs no Check, and
+// when to check again (Every). A reports-only install sends a version-only
+// report: the relay drops an update state from one.
 func (i *Instance) Report(ctx context.Context, r Report) (Reply, error) {
 	if r.Version == "" {
 		r.Version = i.version()
 	}
 	if r.Platform == "" {
 		r.Platform = i.cfg.platform()
+	}
+	if r.InstallMode == "" {
+		r.InstallMode = i.cfg.InstallMode
+	}
+	if !protocol.ValidInstallMode(r.InstallMode) {
+		return Reply{}, fmt.Errorf("mghclient: Report.InstallMode %q is not %q or %q", r.InstallMode, InstallSelf, InstallReport)
 	}
 	reply, err := i.c.AppReport(ctx, i.cfg.app(), r)
 	if err != nil {

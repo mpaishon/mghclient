@@ -1,4 +1,4 @@
-// Package protocol holds the wire types shared by the relay server (mghRelay)
+// Package protocol holds the wire types shared by the relay server (the GH Update Relay, binary mghRelay)
 // and its client (mghagent). It has no server-only dependencies, so the client
 // imports it without pulling in Gin, GORM or the PKI.
 //
@@ -129,6 +129,23 @@ type Repo struct {
 	LatestPublished *time.Time `json:"latest_published_at,omitempty"`
 	HookState       string     `json:"hook_state,omitempty"` // admin views only: HookState*
 	SyncedAt        time.Time  `json:"synced_at"`            // last time the relay read it from GitHub
+	// ReleaseCount is how many releases the caller may see (drafts and
+	// prereleases included when the caller's channels allow them), and
+	// AssetReleaseCount how many of those carry at least one asset — a
+	// payload the relay can serve.
+	ReleaseCount      int `json:"release_count"`
+	AssetReleaseCount int `json:"asset_release_count"`
+	// Counts is the per-channel tally the two counts above are summed from
+	// for a principal. The callers that show counts attach it from
+	// catalog.Store.ReleaseTallies (Repos and Repo leave it empty); it never
+	// leaves the relay.
+	Counts map[Channel]ReleaseTally `json:"-"`
+}
+
+// ReleaseTally counts one channel's releases of a repo.
+type ReleaseTally struct {
+	Releases   int // releases in the channel
+	WithAssets int // of those, the ones with at least one asset
 }
 
 // Release is one GitHub release.
@@ -318,6 +335,17 @@ type Client struct {
 	Channel string `json:"channel,omitempty"`
 	Hold    bool   `json:"hold"`
 	State   string `json:"state"`
+	// DistributionViolation is set, on the app's instance list, for a live
+	// instance of a distribution-only app that is not one of its hubs (or a
+	// second instance of a hub): it keeps working until revoked, but the
+	// relay would not enrol it today.
+	DistributionViolation string `json:"distribution_violation,omitempty"`
+	// InstallMode is InstallModeSelf or InstallModeReport, as the
+	// instance's last report said (an instance that never said is self). A
+	// reports-only instance is still offered its release, under policy
+	// notify at most, and is upgraded by redeploying. Read-only: set by the
+	// instance's reports, never by an admin.
+	InstallMode string `json:"install_mode"`
 }
 
 // Code is an enrolment code as listed (the code itself is shown once).
@@ -440,7 +468,13 @@ const (
 	ReclaimUntagged     = "untagged"      // an untagged GHCR version
 	ReclaimCacheBlob    = "cache_blob"    // a cached blob not used in N days
 	ReclaimDeletedAsset = "deleted_asset" // a cached blob whose asset no longer exists
+	// ReclaimBeyondNewest is a release beyond a repo's newest N, whatever
+	// its age: the keep-newest report (GET /admin/retention/keep) lists them.
+	ReclaimBeyondNewest = "beyond_newest"
 )
+
+// MaxKeepNewest bounds the keep-newest report's N.
+const MaxKeepNewest = 1000
 
 // ReclaimItem is one thing that could be deleted.
 type ReclaimItem struct {
@@ -488,10 +522,74 @@ type StepResult struct {
 	Detail  string `json:"detail,omitempty"`
 }
 
-// PurgeResult is the reply to a purge.
+// PurgeResult is the reply to a purge. Cancelled is set when the caller went
+// away, or a streamed purge was stopped (POST
+// /admin/retention/purge/:id/stop), part way: the item in hand was
+// finished, the rest were not attempted and stay in the next report.
+// Counts sums a purge up by item; a direct release or image delete leaves
+// it out.
 type PurgeResult struct {
-	DryRun bool         `json:"dry_run"`
-	Steps  []StepResult `json:"steps"`
+	DryRun    bool         `json:"dry_run"`
+	Steps     []StepResult `json:"steps"`
+	Cancelled bool         `json:"cancelled,omitempty"`
+	Counts    *PurgeCounts `json:"counts,omitempty"`
+}
+
+// PurgeCounts is a purge's items by outcome: Total asked for, Attempted
+// (started, and so finished), and of those OK, Failed and Skipped, as the
+// item_done frames report them.
+type PurgeCounts struct {
+	Total     int `json:"total"`
+	Attempted int `json:"attempted"`
+	OK        int `json:"ok"`
+	Failed    int `json:"failed"`
+	Skipped   int `json:"skipped"`
+}
+
+// PurgeStop is the reply to POST /admin/retention/purge/:id/stop: the run
+// stops after the item in hand and ends with its done frame. Already says
+// an earlier call had asked.
+type PurgeStop struct {
+	ID       string `json:"id"`
+	Stopping bool   `json:"stopping"`
+	Already  bool   `json:"already,omitempty"`
+}
+
+// A streamed purge (POST /admin/retention/purge with Accept:
+// text/event-stream) reports as it goes, one PurgeProgress per frame:
+// started first (the run's ID, for POST /admin/retention/purge/:id/stop,
+// and Total), item_start before an item is worked on, item_done after it
+// (with its steps and outcome), then one done carrying the same
+// PurgeResult the JSON reply would have, or one error if the run could not
+// finish. A reader ignores frame types it does not know.
+const (
+	PurgeStarted   = "started"
+	PurgeItemStart = "item_start"
+	PurgeItemDone  = "item_done"
+	PurgeDone      = "done"
+	PurgeError     = "error"
+)
+
+// Item outcomes of a streamed purge (item_done), as the item is audited.
+const (
+	PurgeItemOK      = "ok"
+	PurgeItemFailed  = "failed"
+	PurgeItemSkipped = "skipped" // every step was skipped, e.g. a release now exists under an orphan image's tag
+)
+
+// PurgeProgress is one frame of a streamed purge. Index is 1-based and
+// counts toward Total, the number of items the purge was asked for.
+type PurgeProgress struct {
+	Type    string       `json:"type"`
+	ID      string       `json:"id,omitempty"` // started: the run's id, to stop it with
+	Index   int          `json:"index,omitempty"`
+	Total   int          `json:"total"`
+	Item    *ReclaimItem `json:"item,omitempty"`
+	Label   string       `json:"label,omitempty"`   // the item in words: "me/app@v1", "me/app version 21", a blob's SHA-256
+	Outcome string       `json:"outcome,omitempty"` // item_done: ok, failed, skipped
+	Steps   []StepResult `json:"steps,omitempty"`   // item_done: this item's steps
+	Error   string       `json:"error,omitempty"`   // item_done: what failed; error: why the run stopped
+	Result  *PurgeResult `json:"result,omitempty"`  // done
 }
 
 // Hook states.
@@ -520,7 +618,7 @@ type AuditEvent struct {
 	Actor   string    `json:"actor"`   // "user:<name>", "client:<id>", "token:<label>", "link:<id>", "github", "system"
 	Action  string    `json:"action"`  // Audit* below
 	Target  string    `json:"target"`  // what it acted on
-	Outcome string    `json:"outcome"` // ok, denied, failed
+	Outcome string    `json:"outcome"` // ok, denied, failed, warning; cancelled (a purge stopped between items)
 	From    string    `json:"from"`    // client address
 	Detail  string    `json:"detail,omitempty"`
 	Bytes   int64     `json:"bytes,omitempty"`
@@ -638,6 +736,48 @@ type Status struct {
 	// PendingTickets is the enrolments waiting for approval, every app's
 	// (the console's Approvals badge).
 	PendingTickets int `json:"pending_tickets"`
+
+	// WebhookIntake is the webhook intake,,
+	// added 2026-11-26; nil when the relay does not report it (an older
+	// relay, or the seam not wired).
+	WebhookIntake *WebhookIntake `json:"webhook_intake,omitempty"`
+}
+
+// WebhookIntake is the webhook intake's state on the dashboard.
+// Deliveries are answered 202 and
+// written in batches, so GitHub no longer shows a failure the relay had:
+// this is where the relay reports its own. The counters are in memory and
+// restart at zero with the relay.
+type WebhookIntake struct {
+	// Depth is the deliveries answered 202 and not yet written or dropped:
+	// those queued plus the batch in flight.
+	Depth int `json:"depth"`
+	// OldestAt is when the oldest of those arrived; absent when Depth is 0.
+	OldestAt *time.Time `json:"oldest_at,omitempty"`
+	// LastBatchAt is when the last batch finished, written or failed;
+	// absent before the first.
+	LastBatchAt *time.Time `json:"last_batch_at,omitempty"`
+	// LastBatchMS is how long that batch took, in milliseconds.
+	LastBatchMS int64 `json:"last_batch_ms"`
+	// Batches is the batches finished since the relay started, failed ones
+	// included.
+	Batches int64 `json:"batches"`
+	// Accepted is the deliveries taken (202) since the relay started.
+	Accepted int64 `json:"accepted"`
+	// Merged is, of those, how many joined a repository already queued: a
+	// database write saved.
+	Merged int64 `json:"merged"`
+	// Dropped is the deliveries acknowledged 2xx but never written: a
+	// note-only delivery refused by a full intake, a failed batch, or
+	// shutdown. Deliveries for an excluded repository are not counted.
+	Dropped int64 `json:"dropped"`
+	// Refused is the deliveries answered 503 because the intake was full
+	// (the in-flight cap's 503s are not counted).
+	Refused int64 `json:"refused"`
+	// LastError is the last failed batch's error ("webhook intake: ...");
+	// it stays until the relay restarts.
+	LastError   string     `json:"last_error,omitempty"`
+	LastErrorAt *time.Time `json:"last_error_at,omitempty"`
 }
 
 // Event is one message on the console's live stream (GET /events).
@@ -646,6 +786,26 @@ type Event struct {
 	At   time.Time `json:"at"`
 	Repo string    `json:"repo,omitempty"`
 	Text string    `json:"text"`
+
+	// Admin marks an event whose Text names what only an admin may see (a
+	// client or instance label, a verification code's label). The stream
+	// sends it to an admin session as it is; to anyone else it sends
+	// MemberText in its place, or nothing when MemberText is empty. Neither
+	// field is on the wire.
+	Admin      bool   `json:"-"`
+	MemberText string `json:"-"`
+}
+
+// ForMember is ev as a non-admin session may see it, and whether it may see
+// it at all (Admin events without a MemberText are dropped).
+func (ev Event) ForMember() (Event, bool) {
+	if !ev.Admin {
+		return ev, true
+	}
+	if ev.MemberText == "" {
+		return Event{}, false
+	}
+	return Event{Type: ev.Type, At: ev.At, Repo: ev.Repo, Text: ev.MemberText}, true
 }
 
 // GitHub token expiry, backup and

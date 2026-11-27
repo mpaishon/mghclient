@@ -163,6 +163,11 @@ func (e *StatusError) Error() string {
 		// profile", on purpose; say both.
 		return "not found on the relay (or not in this client's access profile)"
 	case http.StatusForbidden, http.StatusUnauthorized:
+		// A 403 that is not about the certificate says why (e.g. an
+		// instance of a distribution-only app that is not its hub).
+		if e.Code == http.StatusForbidden && e.Message != "" && !strings.Contains(strings.ToLower(e.Message), "revoked") {
+			return "the relay refused this request: " + e.Message
+		}
 		return "the relay refused this client: it may have been revoked; enrol again with a new code"
 	}
 	if e.Message != "" {

@@ -1,6 +1,9 @@
 package protocol
 
-import "time"
+import (
+	"cmp"
+	"time"
+)
 
 // The upgrade gateway: apps the relay
 // serves updates for, the generic offer, and what an instance reports.
@@ -43,6 +46,28 @@ const (
 	EnrolLANAuto = "lan_auto"
 )
 
+// App update models: who talks to the relay for an app. Read-only on the
+// wire, derived from the record (see App.UpdateModel); never stored.
+const (
+	UpdateModelStandalone  = "standalone"   // every install enrols here and updates itself (house standard Profile B)
+	UpdateModelHub         = "hub"          // hub-and-spoke: only the app's hubs enrol here (Profile A, DistributionOnly)
+	UpdateModelRelayClient = "relay_client" // mghagent: the relay is the hub for its own client
+)
+
+// DeriveUpdateModel is the rule: the relay's own client is a relay client
+// (it can never be distribution-only), a distribution-only app is
+// hub-and-spoke, and anything else is standalone.
+func DeriveUpdateModel(slug string, distributionOnly bool) string {
+	switch {
+	case slug == AppMghagent:
+		return UpdateModelRelayClient
+	case distributionOnly:
+		return UpdateModelHub
+	default:
+		return UpdateModelStandalone
+	}
+}
+
 // App is an application the relay serves updates for (GET /admin/apps).
 type App struct {
 	Slug          string    `json:"slug"`
@@ -60,17 +85,97 @@ type App struct {
 	Enabled       bool      `json:"enabled"`
 	CreatedAt     time.Time `json:"created_at"`
 	CreatedBy     string    `json:"created_by,omitempty"`
+	// DistributionOnly is a hub-and-spoke app (house standard Profile A,
+	// A-08): only the instances labelled as one of Hubs may enrol, on every
+	// path, and at most one live instance per hub label. Hubs empty with
+	// DistributionOnly on is "enrol none".
+	DistributionOnly bool     `json:"distribution_only"`
+	Hubs             []string `json:"hubs"`
+	// Signed and HubCount are derived from SigningKeyHex and Hubs, so the
+	// console can say "signed" and "1 of 2 hubs" without either; they are
+	// all a member's view (AppMemberView) carries of them.
+	Signed   bool `json:"signed"`
+	HubCount int  `json:"hub_count"`
+	// UpdateModel is UpdateModel*, derived on every read: the relay's own
+	// client (AppMghagent) is a relay client, a DistributionOnly app is
+	// hub-and-spoke, anything else standalone. Read-only: AppInput has no
+	// such field, so a request that sends it has it ignored.
+	UpdateModel string `json:"update_model"`
 
 	// Console only, filled in on the admin routes.
-	Instances  int    `json:"instances"`   // live (not revoked) instances
-	Behind     int    `json:"behind"`      // instances not on the offered release
+	Instances int `json:"instances"` // live (not revoked) instances
+	Behind    int `json:"behind"`    // instances not on the offered release
+	// Redeploy is the part of Behind that reports only (InstallModeReport):
+	// behind, and upgraded by redeploying rather than by an update.
+	Redeploy   int    `json:"redeploy"`
 	Pending    int    `json:"pending"`     // tickets waiting for approval (phase 2)
 	LatestTag  string `json:"latest_tag"`  // newest release on the app's channel
 	OfferedTag string `json:"offered_tag"` // what an up-to-date check is offered now; "" = held
+	// AwaitingPromotion counts the releases waiting for the admin to promote
+	// them (apps.Awaiting): always 0 for automatic promotion or a disabled
+	// app. AwaitingTag and AwaitingPublishedAt are the newest of them.
+	AwaitingPromotion   int        `json:"awaiting_promotion"`
+	AwaitingTag         string     `json:"awaiting_tag"`
+	AwaitingPublishedAt *time.Time `json:"awaiting_published_at"` // null when nothing waits
+	// Violations counts live instances a distribution-only app would not
+	// enrol today (each one's Client.DistributionViolation says why).
+	Violations int `json:"violations"`
+}
+
+// AppMemberView is an app as a member's session sees it on GET /apps and
+// GET /apps/:slug: what the Apps list and the app's Releases tab show, and
+// nothing of how the app is administered. It is an allow-list, so a field
+// added to App stays admin-only until it is added here as well.
+//
+// Left out (admin only): signing_key_hex (Signed says whether there is
+// one), hubs (hub instance labels; HubCount says how many), audience,
+// enrol_policy, update_policy, max_pending, ticket_hours, asset_pattern and
+// created_by.
+type AppMemberView struct {
+	Slug             string    `json:"slug"`
+	Name             string    `json:"name"`
+	Repo             string    `json:"repo"`
+	Channel          string    `json:"channel"`
+	Promotion        string    `json:"promotion"`
+	Enabled          bool      `json:"enabled"`
+	CreatedAt        time.Time `json:"created_at"`
+	DistributionOnly bool      `json:"distribution_only"`
+	Signed           bool      `json:"signed"`
+	HubCount         int       `json:"hub_count"`
+	UpdateModel      string    `json:"update_model"`
+
+	Instances  int    `json:"instances"`
+	Behind     int    `json:"behind"`
+	Redeploy   int    `json:"redeploy"`
+	Pending    int    `json:"pending"`
+	LatestTag  string `json:"latest_tag"`
+	OfferedTag string `json:"offered_tag"`
+	Violations int    `json:"violations"`
+
+	AwaitingPromotion   int        `json:"awaiting_promotion"`
+	AwaitingTag         string     `json:"awaiting_tag"`
+	AwaitingPublishedAt *time.Time `json:"awaiting_published_at"` // null when nothing waits
+}
+
+// MemberView is a as AppMemberView. Signed, HubCount and UpdateModel are
+// worked out from a's own key, hubs and flag too, so an App not built by
+// apps.FromRow is safe.
+func (a App) MemberView() AppMemberView {
+	return AppMemberView{
+		Slug: a.Slug, Name: a.Name, Repo: a.Repo, Channel: a.Channel, Promotion: a.Promotion,
+		Enabled: a.Enabled, CreatedAt: a.CreatedAt, DistributionOnly: a.DistributionOnly,
+		Signed: a.Signed || a.SigningKeyHex != "", HubCount: max(a.HubCount, len(a.Hubs)),
+		UpdateModel: cmp.Or(a.UpdateModel, DeriveUpdateModel(a.Slug, a.DistributionOnly)),
+		Instances:   a.Instances, Behind: a.Behind, Redeploy: a.Redeploy, Pending: a.Pending,
+		LatestTag: a.LatestTag, OfferedTag: a.OfferedTag, Violations: a.Violations,
+		AwaitingPromotion: a.AwaitingPromotion, AwaitingTag: a.AwaitingTag, AwaitingPublishedAt: a.AwaitingPublishedAt,
+	}
 }
 
 // AppInput is POST /admin/apps and PUT /admin/apps/:slug. A nil field is
-// left as it is on PUT; slug and repo are fixed once created.
+// left as it is on PUT; slug and repo are fixed once created. App's
+// read-only fields (update_model and the console figures) are not here, so
+// a body that carries them has them ignored.
 type AppInput struct {
 	Slug          *string `json:"slug,omitempty"`
 	Name          *string `json:"name,omitempty"`
@@ -85,6 +190,9 @@ type AppInput struct {
 	MaxPending    *int    `json:"max_pending,omitempty"`
 	TicketHours   *int    `json:"ticket_hours,omitempty"`
 	Enabled       *bool   `json:"enabled,omitempty"`
+	// DistributionOnly and Hubs: see App. Hubs replaces the whole list.
+	DistributionOnly *bool     `json:"distribution_only,omitempty"`
+	Hubs             *[]string `json:"hubs,omitempty"`
 }
 
 // AppRepoCheck is POST /admin/apps/check-repo: whether the relay can see a
@@ -132,6 +240,26 @@ type InstanceReport struct {
 	Platform    string `json:"platform"`               // goos-arch
 	UpdateState string `json:"update_state,omitempty"` // staged | swapped | confirmed | rolled_back | failed
 	Detail      string `json:"detail,omitempty"`
+	// InstallMode is how this install is kept current: InstallModeSelf
+	// (it takes the offer and swaps its own binary) or InstallModeReport (a
+	// container: it reports its version and is upgraded by redeploying).
+	// Empty is self, so an SDK that predates the field reads as before; a
+	// relay that predates it ignores it. Any other value is refused (400).
+	// Only a standalone app's instance can report only: from a hub or a
+	// relay client the value is ignored.
+	InstallMode string `json:"install_mode,omitempty"`
+}
+
+// Install modes (InstanceReport.InstallMode, Client.InstallMode).
+const (
+	InstallModeSelf   = "self"   // self-updating: takes the offer and installs it
+	InstallModeReport = "report" // reports only: shown as behind, redeployed, never installs
+)
+
+// ValidInstallMode reports whether m is an install mode a report may carry:
+// empty (self), self or report.
+func ValidInstallMode(m string) bool {
+	return m == "" || m == InstallModeSelf || m == InstallModeReport
 }
 
 // InstanceReply answers a report: when to check again and, so a client
@@ -160,6 +288,9 @@ const (
 	AuditInstanceReleased     = "instance_released"
 	AuditOfferNoAsset         = "offer_no_asset"
 	AuditOfferUnsigned        = "offer_unsigned"
+	// AuditInstanceModeChanged is an instance's reports switching between
+	// self-updating and reports only, with the update state it showed.
+	AuditInstanceModeChanged = "instance_mode_changed"
 )
 
 // Token scopes for apps (in AllScopes).
@@ -241,11 +372,13 @@ type Ticket struct {
 
 // TicketApproval is POST /admin/enroll/tickets/:id/approve. Every field is
 // optional: the label defaults to the hostname, the channel to the app's,
-// Allow WAN to off.
+// the update policy to the app's (off | notify | automatic set it on the
+// instance in the same step), Allow WAN to off.
 type TicketApproval struct {
-	Label    string `json:"label,omitempty"`
-	Channel  string `json:"channel,omitempty"`
-	AllowWAN bool   `json:"allow_wan,omitempty"`
+	Label        string `json:"label,omitempty"`
+	Channel      string `json:"channel,omitempty"`
+	UpdatePolicy string `json:"update_policy,omitempty"`
+	AllowWAN     bool   `json:"allow_wan,omitempty"`
 }
 
 // Ticket networks.
